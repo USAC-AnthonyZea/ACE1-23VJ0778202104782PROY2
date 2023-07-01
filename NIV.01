@@ -1,0 +1,203 @@
+pared 00,00
+pared 01,00
+pared 02,00
+pared 03,00
+pared 04,00
+pared 05,00
+pared 06,00
+pared 07,00
+pared 08,00
+pared 09,00
+pared 10,00
+pared 11,00
+
+pared 00,01
+pared 00,02
+pared 00,03
+pared 00,04
+pared 00,05
+pared 00,06
+
+pared 01,06
+pared 02,06
+pared 03,06
+pared 04,06
+pared 05,06
+
+pared 05,05
+
+pared 05,01
+pared 05,02
+pared 05,03
+
+pared 02,07
+pared 02,08
+pared 02,09
+
+pared 03,09
+pared 04,09
+pared 05,09
+pared 06,09
+pared 07,09
+pared 08,09
+pared 09,09
+pared 10,09
+pared 11,09
+pared 12,09
+pared 13,09
+
+pared 07,08
+pared 07,05
+pared 07,06
+pared 07,03
+
+pared 08,03
+pared 09,03
+pared 10,03
+
+pared 09,04
+pared 10,04
+
+pared 08,06
+
+pared 11,01
+pared 12,01
+pared 13,01
+
+pared 13,02
+pared 13,03
+pared 13,04
+pared 13,05
+pared 13,06
+pared 13,07
+pared 13,08
+
+pared 12,05
+
+suelo 01,01
+suelo 02,01
+suelo 03,01
+suelo 04,01
+
+suelo 01,02
+suelo 02,02
+suelo 03,02
+suelo 04,02
+
+suelo 01,03
+suelo 02,03
+suelo 03,03
+suelo 04,03
+
+suelo 01,04
+suelo 02,04
+suelo 03,04
+suelo 04,04
+
+suelo 01,05
+suelo 02,05
+suelo 03,05
+suelo 04,05
+
+suelo 06,01
+suelo 06,02
+suelo 06,03
+suelo 06,04
+suelo 06,05
+suelo 06,06
+suelo 06,07
+suelo 06,08
+
+suelo 05,04
+
+suelo 06,06
+
+suelo 03,07
+suelo 04,07
+suelo 05,07
+
+suelo 03,08
+suelo 04,08
+suelo 05,08
+
+suelo 07,01
+suelo 08,01
+suelo 09,01
+suelo 10,01
+
+suelo 07,02
+suelo 08,02
+suelo 09,02
+suelo 10,02
+
+suelo 11,02
+suelo 11,03
+suelo 11,04
+
+suelo 12,02
+suelo 12,03
+suelo 12,04
+
+suelo 07,04
+suelo 08,04
+
+suelo 08,05
+suelo 09,05
+suelo 10,05
+suelo 11,05
+
+suelo 09,06
+suelo 10,06
+suelo 11,06
+suelo 12,06
+
+suelo 09,07
+suelo 10,07
+suelo 11,07
+suelo 12,07
+
+suelo 09,08
+suelo 10,08
+suelo 11,08
+suelo 12,08
+
+suelo 08,07
+suelo 08,08
+
+suelo 07,07
+
+
+objetivo 01,01
+objetivo 01,02
+objetivo 01,03
+objetivo 01,04
+objetivo 01,05
+objetivo 02,01
+objetivo 02,02
+objetivo 02,03
+objetivo 02,04
+objetivo 02,05
+
+
+caja 01,02
+caja 01,03
+
+caja 04,07
+
+caja 07,07
+
+caja 09,02
+
+caja 11,03
+
+caja 09,06
+caja 09,07
+caja 10,06
+
+caja 11,07
+
+jugador 06,02
+
+
+
+
