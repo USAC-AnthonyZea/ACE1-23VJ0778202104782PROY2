@@ -34,7 +34,6 @@ PonerSprite MACRO sprite,col,row
     mov DH,col
     mov DL,row
     call Renderizar_sprite
-    
 ENDM
 
 LimpiarBuffer MACRO buffer,len_buff
@@ -146,7 +145,6 @@ ENDM
     TECLA_F1            EQU 3Bh
     CLAVE_ARRIBA        EQU 48h
     CLAVE_ABAJO         EQU 50h
-
     TECLA_F2            EQU 3Ch
 
     ;;
