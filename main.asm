@@ -2,8 +2,10 @@
 .RADIX 16
 .STACK
 
-; mueve el cursor a una posición
-_MoveCursor MACRO xpos,ypos
+;;;;;;;;;;;;;;;;;;;;;;;;;;;; MACROS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+;; Mueve el cursor a una posición
+MoverPuntero MACRO xpos,ypos
     mov AH,02h  ; establecer la posición del cursor
     mov BH,00h  ; número de página, sólo utilizaremos la 0
     mov DH,ypos ; fila 
@@ -11,31 +13,31 @@ _MoveCursor MACRO xpos,ypos
     int 10h
 ENDM
 
-_GetCursorPos MACRO
+TomarPosicionCursor MACRO
     mov AH,03h  ; get posicions del cursor; DH: row , DL: col
     mov BH,0h   ; en modo gráfico
     int 10h
 ENDM
 
-; Para imprimir una cadena de texto en una posición definida
-_PrintTextAt MACRO xpos, ypos, stringbuffer, color
+;; Imprime texto en una posicion especifica
+ImprimirTextoEspecifico MACRO xpos, ypos, stringbuffer, color
     push SI
-    _MoveCursor xpos,ypos
+    MoverPuntero xpos,ypos
     lea SI,stringbuffer 
     mov BL,color
-    call PrintStr 
+    call Imprimir_Str 
     pop SI
 ENDM
 
-_PutSprite MACRO sprite,col,row
+PonerSprite MACRO sprite,col,row
     lea SI, sprite
     mov DH,col
     mov DL,row
-    call RenderSprite
+    call Renderizar_sprite
     
 ENDM
 
-_ClearBuffer MACRO buffer,len_buff
+LimpiarBuffer MACRO buffer,len_buff
     push DI
     mov DI, offset buffer
     mov AL,0
@@ -44,7 +46,7 @@ _ClearBuffer MACRO buffer,len_buff
     pop DI 
 ENDM
 
-_ClearGameBuffer MACRO buffer,len_buff
+LimpiarBufferJuego MACRO buffer,len_buff
     push DI
     mov DI, offset buffer
     mov AL,0FFh
@@ -53,7 +55,7 @@ _ClearGameBuffer MACRO buffer,len_buff
     pop DI 
 ENDM
 
-_ClearKBBuffer MACRO buffer,len_buff
+LimpiarBufferKB MACRO buffer,len_buff
     push DI
     mov DI, offset buffer
     add DI,02h
@@ -63,7 +65,7 @@ _ClearKBBuffer MACRO buffer,len_buff
     pop DI 
 ENDM
 
-_AtoiBuffer MACRO buffer_str, buffer_num
+BufferAtoi MACRO buffer_str, buffer_num
     push BX
     xor SI,SI
     xor AH,AH
@@ -74,20 +76,20 @@ _AtoiBuffer MACRO buffer_str, buffer_num
     pop BX
 ENDM
 
-_itoaBuffer MACRO buffer1,buffer2
+BufferItoa MACRO buffer1,buffer2
     xor AX,AX
     mov AX,[buffer1]
     mov BX,offset buffer2
     call itoa
     mov AX,[buffer1]
-    call zeroPadding
-    _addtoTMPbuffer buffer2,20h,0
-    _clearBuffer buffer2,20h
+    call padCeroding
+    AnadirBufferTMP buffer2,20h,0
+    LimpiarBuffer buffer2,20h
     lea DI,buffer2
-    _addtoTMPbuffer g_buffer,20h,0 
+    AnadirBufferTMP buffer_g,20h,0 
 ENDM
 
-_addtoTMPbuffer MACRO inp,len_inp,skip_inp
+AnadirBufferTMP MACRO inp,len_inp,skip_inp
     xor CX,CX
     xor SI,SI
     mov SI,offset inp
@@ -96,327 +98,320 @@ _addtoTMPbuffer MACRO inp,len_inp,skip_inp
     rep movsb 
 ENDM
 
-_PrintStr MACRO buffer
+ImprimirString MACRO buffer
     mov SI, offset buffer
-    call printstr
+    call Imprimir_Str
 ENDM
 
-_RenderPos MACRO thingX,thingY,skip
+RenderizarPos MACRO thingX,thingY,skip
     xor SI,SI
-    mov tmp_x,00h
-    mov tmp_y,00h
+    mov x_temportal,00h
+    mov y_temporal,00h
 
     lea SI,thingX
     add SI,skip
     lodsb
-    mov [tmp_x],AL
-    cmp tmp_x,0FFh
-    je FinishFloor
+    mov [x_temportal],AL
+    cmp x_temportal,0FFh
+    je Finalizar_suelo
 
     xor SI,SI
     lea SI,thingY
     add SI,skip
     lodsb
-    mov [tmp_y],AL
+    mov [y_temporal],AL
 ENDM
 
 .DATA
-    ; constantes de colores 
-    C_BLACK     EQU 00h
-    C_WHITE     EQU 0Fh
-    C_GRAY      EQU 08h
-    C_DCYAN     EQU 03h
-    C_LCYAN     EQU 0Bh
-    C_LRED      EQU 0Ch
-    C_DMAGE     EQU 05h
-    C_LMAGE     EQU 23h
+    ;; Constantes de los colores 
+    COLOR_BLANCO        EQU 0Fh
+    COLOR_GRIS          EQU 08h
+    COLOR_DCYAN         EQU 03h
+    COLOR_LCYAN         EQU 0Bh
+    COLOR_LROJO         EQU 0Ch
 
+    ;; Posiciones de la flecha
+    POS_INICIAR         EQU 08h
+    POS_CARGAR          EQU 0Ah
+    POS_CONF            EQU 0Ch
+    POS_PUNTOS          EQU 0Eh
+    POS_SALIR           EQU 10h
 
-    ;posicion de la flecha
-    POS_PLAY    EQU 08h
-    POS_LOAD    EQU 0Ah
-    POS_CONF    EQU 0Ch
-    POS_HSCR    EQU 0Eh
-    POS_EXIT    EQU 10h
+    LINEA_BOTON         EQU 18h
 
-    BOTTOM_LINE EQU 18h
+    POS_CONTADOR        EQU 0Ah
+    POS_LEAV            EQU 0Eh
 
-    POS_CONT    EQU 0Ah
-    POS_LEAV    EQU 0Eh
+    ;; Teclas del menu principal
+    TECLA_F1            EQU 3Bh
+    CLAVE_ARRIBA        EQU 48h
+    CLAVE_ABAJO         EQU 50h
 
-    ; teclas del menú
-    F_1         EQU 3Bh
-    UP_KEY      EQU 48h
-    DOWN_KEY    EQU 50h
+    TECLA_F2            EQU 3Ch
 
-    F_2         EQU 3Ch
-
-    ;
+    ;;
     DESP_U  EQU 01h
     DESP_D  EQU 02h 
     DESP_L  EQU 03h
     DESP_R  EQU 04h
     V_DESP  db 0
-
-    t1 db " ___  ___  _  _____  ___   _   _  _ ",0
-    t2 db "/ __|/ _ \| |/ / _ \| _ ) /_\ | \| |",0
-    t3 db "\__ \ (_) | ' < (_) | _ \/ _ \| .` |",0
-    t4 db "|___/\___/|_|\_\___/|___/_/ \_\_|\_|",0
     
-    start_game  db "INICIAR JUEGO",0
-    load_level  db "CARGAR NIVEL",0
-    config      db "CONFIGURACION",0
-    hi_scores   db "PUNTAJES ALTOS",0
-    salir       db "SALIR",0
-    datos       db "Anthony Samuel Zea Herrera - 202104782",0
-    short_datos db "ASZH - 20214782",0
-    empty       db " ",0
+    iniciar_juego       db "INICIAR JUEGO",0
+    cargar_nivel        db "CARGAR NIVEL",0
+    config              db "CONFIGURACION",0
+    puntajes            db "PUNTAJES ALTOS",0
+    salir               db "SALIR",0
+    datos               db "Anthony Samuel Zea Herrera - 202104782",0
+    datos_pantalla      db "ASZH - 20214782",0
+    vacio               db " ",0
 
-    youwon      db "GANASTE!",0
-    continue    db "CONTINUAR",0
+    msg_ganaste         db "GANASTE!",0
+    msg_continuar       db "CONTINUAR",0
   
-    arrow       db 10h,0
+    arrow               db 10h,0
 
-    ;controles por defecto: flechas (arriba,izquierda,derecha,abajo)
-    key_up      db 48h
-    key_down    db 50h
-    key_right   db 4Dh
-    key_left    db 4Bh
+    ;; Se establecen los controles por defecto (flechas direccionales)
+    tecla_arriba        db 48h
+    tecla_abajo         db 50h
+    tecla_derecha       db 4Dh
+    tecla_izquierda     db 4Bh
 
-    ; archivos de nivel
-    lvl1_name   db "NIV.00",0
-    lvl2_name   db "NIV.01",0
-    lvl3_name   db "NIV.10",0
-    lvlA_name   db 20h dup (0),0
-    lvlA_kbIn   db 21h,20h,22h dup (0),0
-    lvlA_text   db "Ingrese el nombre de archivo:",0
-    lvl_handle  dw 0000
-    g_counter   dw 0000
-    g_counter2  dw 0000
-    g_buffer    db 20h dup(0),0
-    g_buffer2   db 20h dup(0),0
+    ;; Se establecen los 3 niveles por defecto en el juego
+    nombre_nivel1   db "NIV.00",0
+    nombre_nivel2   db "NIV.01",0
+    nombre_nivel3   db "NIV.10",0
+    nombre_nivelA   db 20h dup (0),0
+    KbIn_nivel      db 21h,20h,22h dup (0),0
+    prompt_nivel    db "Ingrese el nombre de archivo:",0
+    handle_nivel    dw 0000
+    counter_g       dw 0000
+    counter_g2      dw 0000
+    buffer_g        db 20h dup(0),0
+    buffer_g2       db 20h dup(0),0
 
-    ; 30 cajas - 30 objetivos (coordenadas en columnas y lineas)
-    box_xpos    db 1Eh  dup (0FFh),0FFh
-    box_ypos    db 1Eh  dup (0FFh),0FFh
-    obj_xpos    db 1Eh  dup (0FFh),0FFh
-    obj_ypos    db 1Eh  dup (0FFh),0FFh
-    ; Suelo y paredes, ¿hasta 255 de cada?
-    wal_xpos    db 0FFh dup (0FFh),0FFh
-    wal_ypos    db 0FFh dup (0FFh),0FFh
-    flo_xpos    db 0FFh dup (0FFh),0FFh
-    flo_ypos    db 0FFh dup (0FFh),0FFh
+    ;; Coordenadas en columnas y lineas -> 30 cajas - 30 objetivos
+    posx_caja       db 1Eh  dup (0FFh),0FFh
+    posy_caja       db 1Eh  dup (0FFh),0FFh
+    posx_obj        db 1Eh  dup (0FFh),0FFh
+    posy_obj        db 1Eh  dup (0FFh),0FFh
 
-    ; contador del número de objetos existentes de cada tipo
-    n_box       db 0,0
-    n_obj       db 0,0
-    n_wal       db 0,0
-    n_flo       db 0,0
+    ;; Suelo y paredes
+    posx_pared      db 0FFh dup (0FFh),0FFh
+    posy_pared      db 0FFh dup (0FFh),0FFh
+    posx_suelo      db 0FFh dup (0FFh),0FFh
+    posy_suelo      db 0FFh dup (0FFh),0FFh
+
+    ;; Contador del número de objetos en el mapa
+    cont_cajas      db 0,0
+    cont_obj        db 0,0
+    cont_pared      db 0,0
+    cont_suelo      db 0,0
     
-    ; Posición del jugador
-    ply_xpos    db 0
-    ply_ypos    db 0
-    ; guarda en que cosa se está parando el jugador, para redibujarla en caso de movimiento
-    ply_over    db 0,0 ; 00h -> piso  01h -> objetivo
-
-    ; varibles temporales para la asiganción de coordenadas
-    tmp_x       db 0,0
-    tmp_y       db 0,0
-    tmp_xp      db 0
-    tmp_yp      db 0
-
-    tmp_xb      db 0
-    tmp_yb      db 0
+    ;; X-Y del jugador
+    posx_jugador    db 0
+    posy_jugador    db 0
     
-    tmp_char    db 0a dup (0),0
+    ;; Guarda el objeto en donde esta el jugador
+    over_jugador    db 0,0
 
-    curr_lvl    db 0 ; primer nivel
-    curr_scr    dw 0000
+    ;; Variables temporales para las coordenadas
+    x_temportal         db 0,0
+    y_temporal          db 0,0
+    x_temportalP        db 0
+    y_temporalP         db 0
+
+    x_temportalB        db 0
+    y_temporalB         db 0
     
-    timer       db 0
-    secs        db 0
-    mins        db 0
-    hrs         db 0
-    secs2b      dw 0000
-    mins2b      dw 0000
-    hrs2b       dw 0000
-    zeropad     db "0",0
-    pad2        db "00",0
-    pad3        db "000",0
-    colon       db ":",0
+    char_temporal       db 0a dup (0),0
+
+    curr_nivel      db 0
+    curr_scr        dw 0000
+    
+    timer           db 0
+    segundos        db 0
+    minutos         db 0
+    horas           db 0
+    segundos2b      dw 0000
+    minutos2b       dw 0000
+    horas2b         dw 0000
+    padCero         db "0",0
+    pad2            db "00",0
+    pad3            db "000",0
+    puntos          db ":",0
 
 .CODE
 .STARTUP
 
-Start:
+Comienzo:
     mov AX, @DATA
     mov DS,AX
     mov ES,AX
 
     mov AH,00h
-    call InitVideo
-    ;jmp Intro
-    jmp MainMenu
+    call Iniciar_video
 
-Intro:
-    _PrintTextAt 02h,08h,t1,C_LCYAN
-    _PrintTextAt 02h,08h+1,t2,C_LCYAN
-    _PrintTextAt 02h,08h+2,t3,C_LCYAN
-    _PrintTextAt 02h,08h+3,t4,C_LCYAN
-    _PrintTextAt 00h,BOTTOM_LINE,datos,C_GRAY
-    mov AH,86h      ; wait CX:DX microsegundos 
+    ;jmp Inicio
+    jmp menu_principal
+
+Inicio:
+    ImprimirTextoEspecifico 00h,LINEA_BOTON,datos,COLOR_GRIS
+    mov AH,86h 
     mov CX, 80h
-    mov DX, 1E84h   ; 1E8480 -> 2 millones us (2 segundos)
+    mov DX, 1E84h
     int 15h 
 
-    call InitVideo  ; usandolo como clear screen xd
-    jmp MainMenu
+    call Iniciar_video                                      ;; Se usa para limpiar el screen de la pantalla
+    jmp menu_principal
 
-MainMenu:
-    _PrintTextAt 0Ch,POS_PLAY,start_game,C_WHITE
-    _PrintTextAt 0Ch,POS_LOAD,load_level,C_WHITE
-    _PrintTextAt 0Ch,POS_CONF,config,C_WHITE
-    _PrintTextAt 0Ch,POS_HSCR,hi_scores,C_WHITE
-    _PrintTextAt 0Ch,POS_EXIT,salir,C_LRED
-    _PrintTextAt 00h,BOTTOM_LINE,datos,C_GRAY           ;imprimir datos en la última linea
-    _PrintTextAt 0Ah,POS_PLAY,arrow,C_DCYAN
-MenuLoop:
-    jmp GetKeyMenu
+menu_principal:
+    ImprimirTextoEspecifico 0Ch,POS_INICIAR,iniciar_juego, COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ch,POS_CARGAR,cargar_nivel,COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ch,POS_CONF,config,COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ch,POS_PUNTOS,puntajes,COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ch,POS_SALIR,salir,COLOR_BLANCO
+    ImprimirTextoEspecifico 00h,LINEA_BOTON,datos,COLOR_GRIS
+    ImprimirTextoEspecifico 0Ah,POS_INICIAR,arrow,COLOR_DCYAN
 
-; leer los teclazos en el menú
-GetKeyMenu:
-    mov AH,12h ;test Control/Shift (resultado en AX)
+Loop_menu:
+    jmp Tomar_llave_menu
+
+;; Leer click de botones
+Tomar_llave_menu:
+    mov AH,12h
     int 16h
-    mov BX,AX ; guardar AX
+    mov BX,AX
 
-    mov AH,10h ; Leer teclado (espera input) en AX -> AH : Scan Code , AL : ASCII
+    mov AH,10h                                                  ; Leer teclado (espera input) en AX -> AH : Scan Code , AL : ASCII
     int 16h
 
-CheckMenuKey:
-    cmp AH,UP_KEY  ; flecha arriba
-    je CheckArrowUpMenu
-    cmp AH,DOWN_KEY  ; flecha abajo
-    je CheckArrowDownMenu
-    cmp AH,F_1
-    je MenuSelected
-    jmp MenuLoop
+Verificar_menu_llave:
+    cmp AH,CLAVE_ARRIBA                                         ; flecha arriba
+    je Verificar_flecha_arriba_menu
+    cmp AH,CLAVE_ABAJO                                          ; flecha abajo
+    je Verificar_flecha_abajo_menu
+    cmp AH,TECLA_F1
+    je Seleccion_menu
+    jmp Loop_menu
 
-CheckArrowUpMenu:
-    _GetCursorPos
-    _PrintTextAt 0Ah,DH,empty,C_DCYAN
-    cmp DH,POS_PLAY
-    je MoveToPos5
+Verificar_flecha_arriba_menu:
+    TomarPosicionCursor
+    ImprimirTextoEspecifico 0Ah,DH,vacio,COLOR_DCYAN
+    cmp DH,POS_INICIAR
+    je Pasar_a_pos5
     sub DH,02h
-    _PrintTextAt 0Ah,DH,arrow,C_DCYAN
-    jmp FinalCheckArrowUp
-    MoveToPos5:
-        _PrintTextAt 0Ah,DH,empty,C_DCYAN
-        _PrintTextAt 0Ah,POS_EXIT,arrow,C_DCYAN
-        jmp FinalCheckArrowUp
-    FinalCheckArrowUp:
-        jmp MenuLoop
+    ImprimirTextoEspecifico 0Ah,DH,arrow,COLOR_DCYAN
+    jmp Verificar_flecha_arriba_final
+    Pasar_a_pos5:
+        ImprimirTextoEspecifico 0Ah,DH,vacio,COLOR_DCYAN
+        ImprimirTextoEspecifico 0Ah,POS_SALIR,arrow,COLOR_DCYAN
+        jmp Verificar_flecha_arriba_final
+    Verificar_flecha_arriba_final:
+        jmp Loop_menu
 
-CheckArrowDownMenu:
-    _GetCursorPos
-    _PrintTextAt 0Ah,DH,empty,C_DCYAN
-    cmp DH,POS_EXIT
-    je MoveToPos1
+Verificar_flecha_abajo_menu:
+    TomarPosicionCursor
+    ImprimirTextoEspecifico 0Ah,DH,vacio,COLOR_DCYAN
+    cmp DH,POS_SALIR
+    je Pasar_a_pos1
     add DH,02h
-    _PrintTextAt 0Ah,DH,arrow,C_DCYAN
-    jmp FinalCheckArrowDown
-    MoveToPos1:
-        _PrintTextAt 0Ah,DH,empty,C_DCYAN
-        _PrintTextAt 0Ah,POS_PLAY,arrow,C_DCYAN
-        jmp FinalCheckArrowUp
-    FinalCheckArrowDown:
-        jmp MenuLoop
+    ImprimirTextoEspecifico 0Ah,DH,arrow,COLOR_DCYAN
+    jmp Verficar_flecha_abajo_final
+    Pasar_a_pos1:
+        ImprimirTextoEspecifico 0Ah,DH,vacio,COLOR_DCYAN
+        ImprimirTextoEspecifico 0Ah,POS_INICIAR,arrow,COLOR_DCYAN
+        jmp Verificar_flecha_arriba_final
+    Verficar_flecha_abajo_final:
+        jmp Loop_menu
         
-MenuSelected:
-    _GetCursorPos
-    cmp DH,POS_PLAY
-    je StartGame
-    cmp DH,POS_LOAD
-    je StartArbitraryGame
-    cmp DH,POS_EXIT
+Seleccion_menu:
+    TomarPosicionCursor
+    cmp DH,POS_INICIAR
+    je Iniciar_partida
+    cmp DH,POS_CARGAR
+    je Inicio_juego_arbitrario
+    cmp DH,POS_SALIR
     je Final
-    jmp MenuLoop
+    jmp Loop_menu
 
-StartGame:
-    mov AH,00h  ; nivel 1
-    mov curr_lvl,AH
-    call ParseLevel 
-    jmp GameLoop
+Iniciar_partida:
+    mov AH,00h                                                              ; nivel 1
+    mov curr_nivel,AH
+    call Analizar_nivel 
+    jmp Lopp_juego
 
-StartArbitraryGame:
-    call InitVideo
-    _ClearKBBuffer lvlA_kbIn,20h
-    _PrintTextAt 3h,8h,lvlA_text,C_GRAY
-    _MoveCursor 3h,0Ah
+Inicio_juego_arbitrario:
+    call Iniciar_video
+    LimpiarBufferKB KbIn_nivel,20h
+    ImprimirTextoEspecifico 3h,8h,prompt_nivel,COLOR_GRIS
+    MoverPuntero 3h,0Ah
     mov AH,0Ah
-    mov DX,offset lvlA_kbIn
+    mov DX,offset KbIn_nivel
     int 21h
 
-    lea SI, lvlA_kbIn
+    lea SI, KbIn_nivel
     add SI,02h
-    lea DI, lvlA_name
-    ; Remover retorno de carro/línea nueva del nombre del archivo
-    RemoveCarriage:
+    lea DI, nombre_nivelA
+
+    ;; Quitar el retorno de carro
+    Quitar_retorno:
         lodsb
         cmp AL,0d
-        je ContinueArbi
+        je msg_continuarArbi
         cmp AL,0a
-        je ContinueArbi
+        je msg_continuarArbi
         cmp AL,0h
-        je ContinueArbi
+        je msg_continuarArbi
         stosb
-        jmp RemoveCarriage
-    ContinueArbi:
-    mov AH,03h  ; opción arbitraria
-    call ParseLevel 
-    jmp GameLoop
+        jmp Quitar_retorno
+    msg_continuarArbi:
+    mov AH,03h                                      ; opción arbitraria
+    call Analizar_nivel 
+    jmp Lopp_juego
 
-GameLoop:
-    call GetTime
+Lopp_juego:
+    call Tomar_tiempo
     mov ah,11h
     int 16h
-    jz GameLoop ; si no se presiona nada
-    ;call RenderTiles
+    jz Lopp_juego                                   ; si no se presiona nada
+
     mov V_DESP,00h
-    call PlayerSteppingOn
+    call Jugador_parado_en
     mov AH,10h
     int 16h
-    cmp AH,F_2
-    je PauseMenu
-    cmp AH,key_up
-    jnz NotUP
-    dec ply_ypos
+    cmp AH,TECLA_F2
+    je Menu_pausa
+    cmp AH,tecla_arriba
+    jnz No_arriba
+    dec posy_jugador
     mov V_DESP,DESP_U
-    jmp FinalPosition 
-    NotUp: ; abajo?
-        cmp AH,key_down
-        jnz NotDown
-        inc ply_ypos
+    jmp Posicion_final 
+    No_arriba:                                      ; abajo?
+        cmp AH,tecla_abajo
+        jnz No_abajo
+        inc posy_jugador
         mov V_DESP,DESP_D
-    NotDown:; izquierda?
-        cmp AH,key_left
-        jnz NotLeft
-        dec ply_xpos
+    No_abajo:                                       ; izquierda?
+        cmp AH,tecla_izquierda
+        jnz No_izquierda
+        dec posx_jugador
         mov V_DESP,DESP_L
-    NotLeft:; derecha?
-        cmp AH,key_right
-        jnz FinalPosition
-        inc ply_xpos
+    No_izquierda:                                   ; derecha?
+        cmp AH,tecla_derecha
+        jnz Posicion_final
+        inc posx_jugador
         mov V_DESP,DESP_R
-    FinalPosition:    
-        call CheckCollision 
-        call UpdateScore
-        call RenderPlayer
+    Posicion_final:    
+        call Verificar_colision 
+        call Actualizar_puntaje
+        call Renderizar_jugador
 
-    jmp GameLoop
+    jmp Lopp_juego
 
-; SI:Sprite DH:posX (columna) DL:posY (linea) 
-; Renderiza el sprite en una posición Columna,Fila (40x25)
-RenderSprite:		
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; SUBRUTINAS ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; SI:Sprite DH:posX (columna) DL:posY (linea) 
+;; Renderiza el sprite en una posición Columna,Fila (40x25)
+Renderizar_sprite:		
     push ES
     push DS
 	mov AX,0A000h
@@ -437,594 +432,598 @@ RenderSprite:
 
 	pop DX
 	
-	mov CL,08h			;Altura 8px
-DrawY:
+	mov CL,08h			                                                ; Altura 8px
+DibujarY:
 	push DI
-    mov CH,08h		    ;Longitud 8px
-DrawX:				
+    mov CH,08h		                                                    ; Longitud 8px
+DibujarX:				
     mov AL,DS:[SI]
-    ;xor AL,ES:[DI]	;Si se imprime el mismo sprite en el mismo lugar, se "borra"
+
+    ;; xor AL,ES:[DI] --> Si se imprime el mismo sprite en el mismo lugar, se "borra"
     mov ES:[DI],AL
     inc SI
     inc DI
     dec CH
-    jnz DrawX ; Siguiente pixel horizontal 
+    jnz DibujarX                                                        ; Siguiente pixel horizontal 
 	pop DI
-	add DI,0140h			; Ir una línea hacia abajo (320px)
+	add DI,0140h			                                            ; Ir una línea hacia abajo (320px)
 	inc BL
 	dec CL
-	jnz DrawY
+	jnz DibujarY
     pop ES
     pop DS
 	ret		
 
-; -> AH  00 -> LV.00  01 -> LV.01 02 -> LV.10 03 -> Arbitrario (?)
-ParseLevel:
-    call ClearLevelAssets 
+;; -> AH  00 -> LV.00  01 -> LV.01 02 -> LV.10 03 -> Arbitrario (?)
+Analizar_nivel:
+    call Limpiar_assets_nivel 
     cmp AH,00h
-    je LvlOne
+    je Nivel_uno
     cmp AH,01h
-    je LvlTwo
+    je Nivel_dos
     cmp AH,02h
-    je LvlThree
+    je Nivel_tres
     cmp AH,03h
-    je LvlArb
+    je Nivel_arbitrario
  
-    LvlOne:    
-        mov DX, offset lvl1_name
-        jmp LoadFile
+    Nivel_uno:    
+        mov DX, offset nombre_nivel1
+        jmp Cargar_archivo
 
-    LvlTwo:
-        mov DX, offset lvl2_name
-        jmp LoadFile
+    Nivel_dos:
+        mov DX, offset nombre_nivel2
+        jmp Cargar_archivo
 
-    LvlThree:
-        mov DX, offset lvl3_name
-        jmp LoadFile
+    Nivel_tres:
+        mov DX, offset nombre_nivel3
+        jmp Cargar_archivo
 
-    LvlArb:
-        lea DX, lvlA_name
-        jmp LoadFile
+    Nivel_arbitrario:
+        lea DX, nombre_nivelA
+        jmp Cargar_archivo
 
-    LoadFile:
+    Cargar_archivo:
         mov AL, 2
         mov AH, 3Dh
         int 21h
-        mov [lvl_handle], AX
-        mov BX,[lvl_handle]
-        jc MainMenu ; el archivo a abrir no fue encontrado
-        call InitVideo
-    ReadChar:
-        _ClearBuffer tmp_char,0a
+        mov [handle_nivel], AX
+        mov BX,[handle_nivel]
+        jc menu_principal                                                   ; el archivo a abrir no fue encontrado
+        call Iniciar_video
+    Leer_caracter:
+        LimpiarBuffer char_temporal,0a
         mov AH,3Fh
         mov CX,01h
-        mov DX,offset tmp_char
+        mov DX,offset char_temporal
         int 21h
-        jc FinishedReading  ; carry flag si hay error, no parece funcionar como yo esperaba xd
-        cmp AX,0000h      ; si no lee nada
-        je FinishedReading
+        jc Finalizar_lectura                                                ; carry flag si hay error, no parece funcionar como yo esperaba xd
+        cmp AX,0000h                                                        ; si no lee nada
+        je Finalizar_lectura
 
-        call SkipSpace
-        cmp tmp_char,'c' ; c aja
-        je ReadBox
-        cmp tmp_char,'j' ; j ugador
-        je ReadPlayer
-        cmp tmp_char,'p' ; p ared
-        je ReadWall
-        cmp tmp_char,'o' ; o bjetivo
-        je ReadObjective
-        cmp tmp_char,'s' ; s uelo
-        je ReadFloor
+        call Saltar_espacio
+        cmp char_temporal,'c' ; c aja
+        je Leer_caja
+        cmp char_temporal,'j' ; j ugador
+        je Leer_jugador
+        cmp char_temporal,'p' ; p ared
+        je Leer_pared
+        cmp char_temporal,'o' ; o bjetivo
+        je Leer_objetivo
+        cmp char_temporal,'s' ; s uelo
+        je Leer_suelo
         ret
-    ;; Suponiendo que el archivo no contendrá errores sintácticos/léxicos
-    ReadBox:
+
+    ;; En caso que el archivo este correctamente escrito
+    Leer_caja:
         mov AH,42h
         mov AL,01h
         mov DX,0003h ; saltarse la palabra (c) aja
         mov CX,0000h 
         int 21h
 
-        call ReadXY
+        call LeerXY
 
-        cmp n_box,1Eh 
-        je ObjError
+        cmp cont_cajas,1Eh 
+        je Error_obj
         
         push SI
         push DI
 
-        lea SI,box_xpos
-        lea DI, tmp_x
-        call AppendToArray
+        lea SI,posx_caja
+        lea DI, x_temportal
+        call Agregar_al_arreglo
 
-        lea SI,box_ypos
-        lea DI, tmp_y
-        call AppendToArray
+        lea SI,posy_caja
+        lea DI, y_temporal
+        call Agregar_al_arreglo
 
-        inc n_box
+        inc cont_cajas
 
         pop SI
         pop DI
-        jmp ReadChar
-    ReadPlayer:
+        jmp Leer_caracter
+    Leer_jugador:
         mov AH,42h
         mov AL,01h
         mov DX,0006h ; saltarse la palabra (j) ugador
         mov CX,0000h 
         int 21h
 
-        call ReadXY
+        call LeerXY
 
-        mov AL,[tmp_x] 
-        mov AH,[tmp_y] 
-        mov [ply_xpos],AL
-        mov [ply_ypos],AH
-        jmp ReadChar
-    ReadWall:
+        mov AL,[x_temportal] 
+        mov AH,[y_temporal] 
+        mov [posx_jugador],AL
+        mov [posy_jugador],AH
+        jmp Leer_caracter
+    Leer_pared:
         mov AH,42h
         mov AL,01h
         mov DX,0004h ; saltarse la palabra (p) ared
         mov CX,0000h 
         int 21h
 
-        call ReadXY
+        call LeerXY
 
-        cmp n_wal,0FFh 
-        je ObjError
+        cmp cont_pared,0FFh 
+        je Error_obj
         
         push SI
         push DI
 
-        lea SI,wal_xpos
-        lea DI, tmp_x
-        call AppendToArray
+        lea SI,posx_pared
+        lea DI, x_temportal
+        call Agregar_al_arreglo
 
-        lea SI,wal_ypos
-        lea DI, tmp_y
-        call AppendToArray
+        lea SI,posy_pared
+        lea DI, y_temporal
+        call Agregar_al_arreglo
 
         pop SI
         pop DI
-        jmp ReadChar
-    ReadObjective:
+        jmp Leer_caracter
+    Leer_objetivo:
         mov AH,42h
         mov AL,01h
         mov DX,0007h ; saltarse la palabra (o) bjetivo
         mov CX,0000h 
         int 21h
 
-        call ReadXY
+        call LeerXY
 
-        cmp n_obj,1Eh 
-        je ObjError
+        cmp cont_obj,1Eh 
+        je Error_obj
         
         push SI
         push DI
 
-        lea SI,obj_xpos
-        lea DI, tmp_x
-        call AppendToArray
+        lea SI,posx_obj
+        lea DI, x_temportal
+        call Agregar_al_arreglo
 
-        lea SI,obj_ypos
-        lea DI, tmp_y
-        call AppendToArray
+        lea SI,posy_obj
+        lea DI, y_temporal
+        call Agregar_al_arreglo
 
         pop SI
         pop DI
-        jmp ReadChar
-    ReadFloor:
+        jmp Leer_caracter
+    Leer_suelo:
         mov AH,42h
         mov AL,01h
         mov DX,0004h ; saltarse la palabra (s) uelo
         mov CX,0000h 
         int 21h
 
-        call ReadXY
+        call LeerXY
 
-        cmp n_flo,0FFh 
-        je ObjError
+        cmp cont_suelo,0FFh 
+        je Error_obj
         
         push SI
         push DI
 
-        lea SI,flo_xpos
-        lea DI, tmp_x
-        call AppendToArray
+        lea SI,posx_suelo
+        lea DI, x_temportal
+        call Agregar_al_arreglo
 
-        lea SI,flo_ypos
-        lea DI, tmp_y
-        call AppendToArray
+        lea SI,posy_suelo
+        lea DI, y_temporal
+        call Agregar_al_arreglo
 
         pop SI
         pop DI
-        jmp ReadChar
+        jmp Leer_caracter
 
-    ObjError:
+    Error_obj:
         ret
 
-    FinishedReading:
-        call RenderTiles
+    Finalizar_lectura:
+        call Renderizar_mapa
         ret
 
-RenderTiles:
-    call InitVideo  ; usandolo como clearsecreen
-    call RenderWalls
-    call RenderFloor
-    call RenderObjectives
-    call RenderBoxes
-    call RenderPlayer
-    _PrintTextAt 00h,BOTTOM_LINE,short_datos,C_GRAY 
+Renderizar_mapa:
+    call Iniciar_video                                          ; usandolo como clearsecreen
+    call Renderizar_pared
+    call Renderizar_suelo
+    call Renderizar_objetivo
+    call Renderizar_caja
+    call Renderizar_jugador
+    ImprimirTextoEspecifico 00h,LINEA_BOTON,datos_pantalla,COLOR_GRIS 
     ret
 
-RenderFloor:
-    mov g_counter,0000h ; contador para imprimir SI 
-    RenderFloorTile:
-    ; flo_xpos , flo_ypos
+Renderizar_suelo:
+    mov counter_g,0000h                                         ; contador para imprimir SI 
+    Renderizar_sueloTile:
 
-    _RenderPos flo_xpos,flo_ypos,g_counter
+    ; posx_suelo , posy_suelo
+    RenderizarPos posx_suelo,posy_suelo,counter_g
 
     xor AX,AX
     xor SI,SI
-    lea SI,floor
-    mov DH,[tmp_x]
-    mov DL,[tmp_y]
-    call RenderSprite
+    lea SI,suelo
+    mov DH,[x_temportal]
+    mov DL,[y_temporal]
+    call Renderizar_sprite
 
-    inc g_counter
-    jmp RenderFloorTile
-    FinishFloor:
-        mov g_counter,0000h
+    inc counter_g
+    jmp Renderizar_sueloTile
+    Finalizar_suelo:
+        mov counter_g,0000h
         ret
 
-RenderWalls:
-    mov g_counter,0000h ; contador para imprimir SI 
-    RenderWallTile:
-    ; wal_xpos , wal_ypos
+Renderizar_pared:
+    mov counter_g,0000h                                         ; contador para imprimir SI 
+    Renderizar_pared_tile:
 
-    _RenderPos wal_xpos,wal_ypos,g_counter
+    ; posx_pared , posy_pared
+    RenderizarPos posx_pared,posy_pared,counter_g
     
     xor AX,AX
     xor SI,SI
-    lea SI,wall
-    mov DH,[tmp_x]
-    mov DL,[tmp_y]
-    call RenderSprite
+    lea SI,pared
+    mov DH,[x_temportal]
+    mov DL,[y_temporal]
+    call Renderizar_sprite
 
-    add g_counter,0001h
-    jmp RenderWallTile
-    FinishWalls:
-        mov g_counter,0000h
+    add counter_g,0001h
+    jmp Renderizar_pared_tile
+    Finalizar_pared:
+        mov counter_g,0000h
         ret
 
-RenderBoxes:
-    mov g_counter,0000h ; contador para imprimir SI 
-    RenderBoxTile:
-    ; wal_xpos , wal_ypos
+Renderizar_caja:
+    mov counter_g,0000h                                         ; contador para imprimir SI 
+    Renderizar_caja_tile:
 
-    _RenderPos box_xpos,box_ypos,g_counter
+    ; posx_pared , posy_pared
+    RenderizarPos posx_caja,posy_caja,counter_g
     
     xor AX,AX
     xor SI,SI
-    lea SI,box
-    mov DH,[tmp_x]
-    mov DL,[tmp_y]
-    call RenderSprite
+    lea SI,caja
+    mov DH,[x_temportal]
+    mov DL,[y_temporal]
+    call Renderizar_sprite
 
-    add g_counter,0001h
-    jmp RenderBoxTile
-    FinishBoxes:
-        mov g_counter,0000h
+    add counter_g,0001h
+    jmp Renderizar_caja_tile
+    Finalizar_caja:
+        mov counter_g,0000h
         ret
 
-RenderObjectives:
-    mov g_counter,0000h ; contador para imprimir SI 
-    RenderObjTile:
-    ; wal_xpos , wal_ypos
+Renderizar_objetivo:
+    mov counter_g,0000h                                         ; contador para imprimir SI 
+    Renderizar_obj_tile:
 
-    _RenderPos obj_xpos,obj_ypos,g_counter
+    ; posx_pared , posy_pared
+    RenderizarPos posx_obj,posy_obj,counter_g
     
     xor AX,AX
     xor SI,SI
-    lea SI,target
-    mov DH,[tmp_x]
-    mov DL,[tmp_y]
-    call RenderSprite
+    lea SI,objetivo
+    mov DH,[x_temportal]
+    mov DL,[y_temporal]
+    call Renderizar_sprite
 
-    add g_counter,0001h
-    jmp RenderObjTile
-    FinishObjs:
-        mov g_counter,0000h
+    add counter_g,0001h
+    jmp Renderizar_obj_tile
+    Finalizar_objeto:
+        mov counter_g,0000h
         ret
 
-RenderPlayer:
-    lea SI,player
-    mov DH,[ply_xpos]
-    mov DL,[ply_ypos]
-    mov tmp_xp,DH
-    mov tmp_yp,DL
-    call RenderSprite
+Renderizar_jugador:
+    lea SI,jugador
+    mov DH,[posx_jugador]
+    mov DL,[posy_jugador]
+    mov x_temportalP,DH
+    mov y_temporalP,DL
+    call Renderizar_sprite
     ret
  
 
-CheckCollision: 
-    call FindWall
-    call BoxHitbox
-    call CheckWinState
+Verificar_colision: 
+    call Buscar_pared
+    call Caja_Hitcaja
+    call Verificar_estado_ganar
     ret
 
-; Verifica si hay una pared, impidiendo el moviento o no dado el caso
-FindWall:
-    mov g_counter,0000h
-    lea SI,wal_xpos
-    FindXWall:
+;; Verifica si hay una pared, impidiendo el moviento o no dado el caso
+Buscar_pared:
+    mov counter_g,0000h
+    lea SI,posx_pared
+    BuscarX_pared:
         lodsb
-        cmp AL,ply_xpos
-        je FindYWall
+        cmp AL,posx_jugador
+        je BuscarY_pared
         cmp AL,0FFh
-        je AbleMoveWall
-        inc g_counter
-        jmp FindXWall
-    FindYWall:
+        je Capaz_moverse_pared
+        inc counter_g
+        jmp BuscarX_pared
+    BuscarY_pared:
         push SI
         xor SI,SI
-        lea SI,wal_ypos
-        add SI,g_counter
+        lea SI,posy_pared
+        add SI,counter_g
         lodsb
-        cmp AL,ply_ypos
-        je CantMoveToWall
+        cmp AL,posy_jugador
+        je No_moverse_a_pared
         pop SI
-        inc g_counter
-        jmp FindXWall
-    CantMoveToWall:
+        inc counter_g
+        jmp BuscarX_pared
+    No_moverse_a_pared:
         pop SI
         xor AX,AX
-        mov AH,tmp_xp
-        mov AL,tmp_yp
-        mov ply_xpos,AH
-        mov ply_ypos,AL
-    AbleMoveWall:
+        mov AH,x_temportalP
+        mov AL,y_temporalP
+        mov posx_jugador,AH
+        mov posy_jugador,AL
+    Capaz_moverse_pared:
         ret
         
     ret
 
-; revisar los movimientos de la caja
-BoxHitbox: 
-    ; verificar si el jugador toca una caja con un potencial movimiento
-    ; ply_xpos , ply_ypos
-    FindBox:
-    mov g_counter,0000h
-    lea SI,box_xpos
-    FindXBox:
+;; revisar los movimientos de la caja
+Caja_Hitcaja: 
+    ;; verificar si el jugador toca una caja con un potencial movimiento
+    ;; posx_jugador , posy_jugador
+    Findcaja:
+    mov counter_g,0000h
+    lea SI,posx_caja
+    BuscarX_caja:
         lodsb
-        cmp AL,ply_xpos
-        je FindYBox
+        cmp AL,posx_jugador
+        je BuscarY_caja
         cmp AL,0FFh
-        je NotFoundBox
-        inc g_counter
-        jmp FindXBox
-    FindYBox:
+        je Caja_no_encontrada
+        inc counter_g
+        jmp BuscarX_caja
+    BuscarY_caja:
         push SI
         xor SI,SI
-        lea SI,box_ypos
-        add SI,g_counter
+        lea SI,posy_caja
+        add SI,counter_g
         lodsb
-        cmp AL,ply_ypos
-        je FoundBox
+        cmp AL,posy_jugador
+        je Caja_encontrada
         pop SI
-        inc g_counter
-        jmp FindXBox
-    NotFoundBox:
+        inc counter_g
+        jmp BuscarX_caja
+    Caja_no_encontrada:
         ret
-    FoundBox:
+    Caja_encontrada:
         pop SI
-        lea SI,box_xpos
-        add SI,g_counter
+        lea SI,posx_caja
+        add SI,counter_g
         lodsb
-        mov tmp_xb,AL
-        lea SI,box_ypos
-        add SI,g_counter
+        mov x_temportalB,AL
+        lea SI,posy_caja
+        add SI,counter_g
         lodsb
 
-        ; verificar la dirección del movimiento
-        mov tmp_yb,AL
+        ;; verificar la dirección del movimiento
+        mov y_temporalB,AL
         cmp V_DESP,DESP_U
-        je CheckMoveUp
+        je Verificar_movimiento_arriba
         cmp V_DESP,DESP_D
-        je CheckMoveDown
+        je Verificar_movimiento_abajo
         cmp V_DESP,DESP_L
-        je CheckMoveLeft
+        je Verificar_movimiento_izquierda
         cmp V_DESP,DESP_R
-        je CheckMoveRight
+        je Verificar_movimiento_derecha
         ret
-    ; suma o resta respectiva de acuerdo a la dirección del movimiento
-    CheckMoveUp: ; movimiento hacia arriba
-        dec tmp_yb
-        jmp CheckBoxMoves
-    CheckMoveDown: ; movimiento hacia abajo
-        inc tmp_yb
-        jmp CheckBoxMoves
-    CheckMoveLeft: ; movimiento hacia la izquierda
-        dec tmp_xb
-        jmp CheckBoxMoves
-    CheckMoveRight: ; movimiento hacia la derecha
-        inc tmp_xb
-        jmp CheckBoxMoves
-    ; verificación de la validez de los movimientos
-    CheckBoxMoves:
-        call FindBoxNextAt
-        cmp AH,01h
-        je DoNotMoveBox
-        call FindWallNextAt
-        cmp AH,01h
-        je DoNotMoveBox
 
-        ; el movimiento es válido
+    ;; suma o resta respectiva de acuerdo a la dirección del movimiento
+    Verificar_movimiento_arriba: ; movimiento hacia arriba
+        dec y_temporalB
+        jmp Verificar_movimiento_cajas
+    Verificar_movimiento_abajo: ; movimiento hacia abajo
+        inc y_temporalB
+        jmp Verificar_movimiento_cajas
+    Verificar_movimiento_izquierda: ; movimiento hacia la izquierda
+        dec x_temportalB
+        jmp Verificar_movimiento_cajas
+    Verificar_movimiento_derecha: ; movimiento hacia la derecha
+        inc x_temportalB
+        jmp Verificar_movimiento_cajas
 
-        ;modificar el valor de la posición X de la caja
-        lea BX,box_xpos
-        add BX,g_counter
-        mov AH,tmp_xb
+    ;; verificación de la validez de los movimientos
+    Verificar_movimiento_cajas:
+        call Buscar_caja_siguiente
+        cmp AH,01h
+        je No_mover_caja
+        call Buscar_pared_siguiente
+        cmp AH,01h
+        je No_mover_caja
+
+        ;; el movimiento es válido
+
+        ;; modificar el valor de la posición X de la caja
+        lea BX,posx_caja
+        add BX,counter_g
+        mov AH,x_temportalB
         mov [BX],AH
 
-        ;modificar el valor de la posición Y de la caja
-        lea BX,box_ypos
-        add BX,g_counter
-        mov AH,tmp_yb
+        ;; modificar el valor de la posición Y de la caja
+        lea BX,posy_caja
+        add BX,counter_g
+        mov AH,y_temporalB
         mov [BX],AH
         
-        ; renderiza caja en su nueva posición
-        mov DH,tmp_xb
-        mov DL,tmp_yb
-        lea SI,box
-        call RenderSprite
+        ;; renderiza caja en su nueva posición
+        mov DH,x_temportalB
+        mov DL,y_temporalB
+        lea SI,caja
+        call Renderizar_sprite
 
         ret
-    DoNotMoveBox:
-        ; el movimiento no es válido, resetear la posición del jugador
+    No_mover_caja:
+        ;; el movimiento no es válido, resetear la posición del jugador
         pop SI
         xor AX,AX
-        mov AH,tmp_xp
-        mov AL,tmp_yp
-        mov ply_xpos,AH
-        mov ply_ypos,AL
+        mov AH,x_temportalP
+        mov AL,y_temporalP
+        mov posx_jugador,AH
+        mov posy_jugador,AL
         ret
 
-; revisa si hay una caja bloqueando o no algún movimiento (sólo se puede mover una caja, no múltiples en fila)
-; tmp_xb , tmp_yb posiciones potenciales de la caja
-; -> AH : 01h no puede moverse,  00h puede moverse
-FindBoxNextAt:
-    mov g_counter2,0000h
-    lea SI,box_xpos
-    FindXBoxAt:
+;; revisa si hay una caja bloqueando o no algún movimiento (sólo se puede mover una caja, no múltiples en fila)
+;; x_temportalB , y_temporalB posiciones potenciales de la caja
+;; -> AH : 01h no puede moverse,  00h puede moverse
+Buscar_caja_siguiente:
+    mov counter_g2,0000h
+    lea SI,posx_caja
+    BuscarX_cajaAt:
         lodsb
-        cmp AL,tmp_xb
-        je FindYBoxAt
+        cmp AL,x_temportalB
+        je BuscarY_cajaAt
         cmp AL,0FFh
-        je NotFoundBoxAt
-        inc g_counter2
-        jmp FindXBoxAt
-    FindYBoxAt:
+        je Caja_no_encontradaAt
+        inc counter_g2
+        jmp BuscarX_cajaAt
+    BuscarY_cajaAt:
         push SI
         xor SI,SI
-        lea SI,box_ypos
-        add SI,g_counter2
+        lea SI,posy_caja
+        add SI,counter_g2
         lodsb
-        cmp AL,tmp_yb
-        je FoundBoxAt
+        cmp AL,y_temporalB
+        je Caja_encontradaAt
         pop SI
-        inc g_counter2
-        jmp FindXBoxAt
-    NotFoundBoxAt:
+        inc counter_g2
+        jmp BuscarX_cajaAt
+    Caja_no_encontradaAt:
         mov AH,00h
         ret
-    FoundBoxAt:
+    Caja_encontradaAt:
         pop SI
         mov AH,01h
         ret
 
-; Se asegura de que una caja no pueda atravesar una pared
-; tmp_xb , tmp_yb posiciones potenciales de la caja
-; -> AH : 01h no puede moverse,  00h puede moverse
-FindWallNextAt:
-    mov g_counter2,0000h
-    lea SI,wal_xpos
-    FindXWallAt:
+;; Se asegura de que una caja no pueda atravesar una pared
+;; x_temportalB , y_temporalB posiciones potenciales de la caja
+;; -> AH : 01h no puede moverse,  00h puede moverse
+Buscar_pared_siguiente:
+    mov counter_g2,0000h
+    lea SI,posx_pared
+    BuscarX_paredAt:
         lodsb
-        cmp AL,tmp_xb
-        je FindYWallAt
+        cmp AL,x_temportalB
+        je BuscarY_paredAt
         cmp AL,0FFh
-        je AbleMoveWallAt
-        inc g_counter2
-        jmp FindXWallAt
-    FindYWallAt:
+        je Capaz_moverse_paredAt
+        inc counter_g2
+        jmp BuscarX_paredAt
+    BuscarY_paredAt:
         push SI
         xor SI,SI
-        lea SI,wal_ypos
-        add SI,g_counter2
+        lea SI,posy_pared
+        add SI,counter_g2
         lodsb
-        cmp AL,tmp_yb
-        je CantMoveToWallAt
+        cmp AL,y_temporalB
+        je No_moverse_a_paredAt
         pop SI
-        inc g_counter2
-        jmp FindXWallAt
-    CantMoveToWallAt:
+        inc counter_g2
+        jmp BuscarX_paredAt
+    No_moverse_a_paredAt:
         pop SI
         mov AH,01h
         ret
-    AbleMoveWallAt:
+    Capaz_moverse_paredAt:
         mov AH,00h
         ret
 
 ; compara las posiciones de las cajas con la de los objetivos, para determinar la victoria
-CheckWinState:
-    mov g_counter,0000h
-    WinStateLoop:
-        lea SI,box_xpos
-        add SI,g_counter
+Verificar_estado_ganar:
+    mov counter_g,0000h
+    Loop_estado_ganar:
+        lea SI,posx_caja
+        add SI,counter_g
         lodsb
-        mov tmp_xb,AL
+        mov x_temportalB,AL
 
-        cmp tmp_xb,0FFh ; si llega al final del arreglo, ganó
-        je Won
+        cmp x_temportalB,0FFh ; si llega al final del arreglo, ganó
+        je Gano
 
-        lea SI,box_ypos
-        add SI,g_counter
+        lea SI,posy_caja
+        add SI,counter_g
         lodsb
-        mov tmp_yb,AL
+        mov y_temporalB,AL
 
-        mov g_counter2,0000h
-        FindXWinState:
-            lea SI,obj_xpos
-            add SI,g_counter2
+        mov counter_g2,0000h
+        Buscar_estadoX_ganar:
+            lea SI,posx_obj
+            add SI,counter_g2
             lodsb
-            cmp tmp_xb,AL
-            je FindYWinState
+            cmp x_temportalB,AL
+            je Buscar_estadoY_ganar
             cmp AL,0FFh
-            je NotWinYet
-            inc g_counter2
-            jmp FindXWinState
-        FindYWinState:
-            lea SI,obj_ypos
-            add SI,g_counter2
+            je No_gano_ahora
+            inc counter_g2
+            jmp Buscar_estadoX_ganar
+        Buscar_estadoY_ganar:
+            lea SI,posy_obj
+            add SI,counter_g2
             lodsb
-            cmp tmp_yb,AL
-            je FoundOne
-            inc g_counter2
-            jmp FindXWinState
-        FoundOne:
-            inc g_counter
-            jmp WinStateLoop
+            cmp y_temporalB,AL
+            je Encontrar_uno
+            inc counter_g2
+            jmp Buscar_estadoX_ganar
+        Encontrar_uno:
+            inc counter_g
+            jmp Loop_estado_ganar
 
-    NotWinYet:
+    No_gano_ahora:
         ret
 
-    Won:
-        jmp YouWin
+    Gano:
+        jmp Tu_ganaste
 
-YouWin:
-    ;_PrintTextAt 10h,0Bh,youwon,C_WHITE      
-    cmp curr_lvl,02h
-    jb GoToNextLevel
-    mov curr_lvl,00h
-    call InitVideo
-    jmp MainMenu
-    GoToNextLevel:
-        inc curr_lvl
-        mov AH,curr_lvl
-        call ParseLevel
+Tu_ganaste:
+    ;; ImprimirTextoEspecifico 10h,0Bh,msg_ganaste,COLOR_BLANCO      
+    cmp curr_nivel,02h
+    jb Ir_al_siguiente_nivel
+    mov curr_nivel,00h
+    call Iniciar_video
+    jmp menu_principal
+    Ir_al_siguiente_nivel:
+        inc curr_nivel
+        mov AH,curr_nivel
+        call Analizar_nivel
         ret
 
-UpdateScore:
-    mov AH,tmp_xp
-    cmp AH,ply_xpos
+Actualizar_puntaje:
+    mov AH,x_temportalP
+    cmp AH,posx_jugador
     je CompareY
     inc curr_scr 
-    jmp RenderScore
+    jmp Renderizar_puntaje
     CompareY:
-        mov AL,tmp_yp
-        cmp AL,ply_ypos
-        je RenderScore
+        mov AL,y_temporalP
+        cmp AL,posy_jugador
+        je Renderizar_puntaje
         inc curr_scr
-    RenderScore:
+    Renderizar_puntaje:
         cmp curr_scr,0064h
         jb TriplePad
         cmp curr_scr,03E8h
@@ -1032,236 +1031,236 @@ UpdateScore:
         cmp curr_scr,2710h
         jb SinglePad
         ;no pad
-        _itoaBuffer curr_scr,g_buffer2
-        _PrintTextAt 22h,00h,g_buffer2,C_WHITE
+        BufferItoa curr_scr,buffer_g2
+        ImprimirTextoEspecifico 22h,00h,buffer_g2,COLOR_BLANCO
         ret
         TriplePad:
-            _PrintTextAt 22h,00h,pad3,C_WHITE
-            _itoaBuffer curr_scr,g_buffer2
-            _PrintTextAt 25h,00h,g_buffer2,C_WHITE
+            ImprimirTextoEspecifico 22h,00h,pad3,COLOR_BLANCO
+            BufferItoa curr_scr,buffer_g2
+            ImprimirTextoEspecifico 25h,00h,buffer_g2,COLOR_BLANCO
             ret
         DoublePad:
-            _PrintTextAt 22h,00h,pad2,C_WHITE
-            _itoaBuffer curr_scr,g_buffer2
-            _PrintTextAt 24h,00h,g_buffer2,C_WHITE
-            _PrintTextAt 27h,00h,empty,C_WHITE
+            ImprimirTextoEspecifico 22h,00h,pad2,COLOR_BLANCO
+            BufferItoa curr_scr,buffer_g2
+            ImprimirTextoEspecifico 24h,00h,buffer_g2,COLOR_BLANCO
+            ImprimirTextoEspecifico 27h,00h,vacio,COLOR_BLANCO
             ret
         SinglePad:
-            _PrintTextAt 22h,00h,zeropad,C_WHITE
-            _itoaBuffer curr_scr,g_buffer2
-            _PrintTextAt 23h,00h,g_buffer2,C_WHITE
+            ImprimirTextoEspecifico 22h,00h,padCero,COLOR_BLANCO
+            BufferItoa curr_scr,buffer_g2
+            ImprimirTextoEspecifico 23h,00h,buffer_g2,COLOR_BLANCO
             ret
     ret
 
-; re-renderizar el bloque de suelo u objetivo sobre el que se estaba parando el jugador
-PlayerSteppingOn:
-    mov g_counter,0000h
-    lea SI,obj_xpos
-    FindXStepping:
+;; re-renderizar el bloque de suelo u objetivo sobre el que se estaba parando el jugador
+Jugador_parado_en:
+    mov counter_g,0000h
+    lea SI,posx_obj
+    BuscarX_Steppint:
         lodsb
-        cmp AL,tmp_xp
-        je FindYStepping
+        cmp AL,x_temportalP
+        je BuscarY_Stepping
         cmp AL,0FFh
-        je SteppingFloor
-        inc g_counter
-        jmp FindXStepping
-    FindYStepping:
+        je Piso_Stepping
+        inc counter_g
+        jmp BuscarX_Steppint
+    BuscarY_Stepping:
         push SI
         xor SI,SI
-        lea SI,obj_ypos
-        add SI,g_counter
+        lea SI,posy_obj
+        add SI,counter_g
         lodsb
-        cmp AL,tmp_yp
-        je SteppingObj
+        cmp AL,y_temporalP
+        je Objetivo_Stepping
         pop SI
-        inc g_counter
-        jmp FindXStepping
+        inc counter_g
+        jmp BuscarX_Steppint
 
-    SteppingObj:
+    Objetivo_Stepping:
         pop SI
         xor AX,AX
-        lea SI, target
-        mov DH,tmp_xp
-        mov DL,tmp_yp
-        call RenderSprite
+        lea SI, objetivo
+        mov DH,x_temportalP
+        mov DL,y_temporalP
+        call Renderizar_sprite
         ret
-    SteppingFloor:
-        lea SI, floor
-        mov DH,tmp_xp
-        mov DL,tmp_yp
-        call RenderSprite
+    Piso_Stepping:
+        lea SI, suelo
+        mov DH,x_temportalP
+        mov DL,y_temporalP
+        call Renderizar_sprite
         ret
         
     ret
 
-PauseMenu:
-    call InitVideo
-    _PrintTextAt 0Ch,POS_CONT,continue,C_WHITE
-    _PrintTextAt 0Ch,POS_LEAV,salir,C_LRED
-    _PrintTextAt 0Ah,POS_CONT,arrow,C_DCYAN
-    jmp GetPauseKey
+Menu_pausa:
+    call Iniciar_video
+    ImprimirTextoEspecifico 0Ch,POS_CONTADOR,msg_continuar,COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ch,POS_LEAV,salir,COLOR_BLANCO
+    ImprimirTextoEspecifico 0Ah,POS_CONTADOR,arrow,COLOR_DCYAN
+    jmp Tomar_clave_pausa
 
-GetPauseKey:
-    mov AH,12h ;test Control/Shift (resultado en AX)
+Tomar_clave_pausa:
+    mov AH,12h
     int 16h
-    mov BX,AX ; guardar AX
+    mov BX,AX 
 
-    mov AH,10h ; Leer teclado (espera input) en AX -> AH : Scan Code , AL : ASCII
+    mov AH,10h                                                          ; Leer teclado (espera input) en AX -> AH : Scan Code , AL : ASCII
     int 16h
 
-CheckPauseKey:
-    cmp AH,UP_KEY  ; flecha arriba
-    je CheckArrowPause
-    cmp AH,DOWN_KEY  ; flecha abajo
-    je CheckArrowPause
-    cmp AH,F_1
-    je PauseSelected
-    jmp GetPauseKey
+Verificar_clave_pausa:
+    cmp AH,CLAVE_ARRIBA                                                 ; flecha arriba
+    je Verificar_flecha_pausa
+    cmp AH,CLAVE_ABAJO                                                  ; flecha abajo
+    je Verificar_flecha_pausa
+    cmp AH,TECLA_F1
+    je Seleccion_pausa
+    jmp Tomar_clave_pausa
 
-CheckArrowPause:
-    _GetCursorPos
-    _PrintTextAt 0Ah,DH,empty,C_DCYAN
-    cmp DH,POS_LOAD
-    je MoveToLeave
-    _PrintTextAt 0Ah,POS_LEAV,empty,C_DCYAN
-    _PrintTextAt 0Ah,POS_CONT,arrow,C_DCYAN
-    jmp FinalCheckArrowPause
-    MoveToLeave:
-        _PrintTextAt 0Ah,POS_CONT,empty,C_DCYAN
-        _PrintTextAt 0Ah,POS_LEAV,arrow,C_DCYAN
-        jmp FinalCheckArrowPause
-    FinalCheckArrowPause:
-        jmp GetPauseKey
+Verificar_flecha_pausa:
+    TomarPosicionCursor
+    ImprimirTextoEspecifico 0Ah,DH,vacio,COLOR_DCYAN
+    cmp DH,POS_CARGAR
+    je Mudarse_para_irse
+    ImprimirTextoEspecifico 0Ah,POS_LEAV,vacio,COLOR_DCYAN
+    ImprimirTextoEspecifico 0Ah,POS_CONTADOR,arrow,COLOR_DCYAN
+    jmp FinalVerificar_flecha_pausa
+    Mudarse_para_irse:
+        ImprimirTextoEspecifico 0Ah,POS_CONTADOR,vacio,COLOR_DCYAN
+        ImprimirTextoEspecifico 0Ah,POS_LEAV,arrow,COLOR_DCYAN
+        jmp FinalVerificar_flecha_pausa
+    FinalVerificar_flecha_pausa:
+        jmp Tomar_clave_pausa
  
-PauseSelected:
-    _GetCursorPos
-    cmp DH,POS_CONT
-    je RenderAndContinue
+Seleccion_pausa:
+    TomarPosicionCursor
+    cmp DH,POS_CONTADOR
+    je RenderAndmsg_continuar
     cmp DH,POS_LEAV
-    je ClearAndLeave
-    jmp CheckPauseKey
-    RenderAndContinue:
-        call RenderTiles
-        jmp GameLoop
-    ClearAndLeave:
-        call InitVideo
-        jmp MainMenu
+    je Limpiar_e_irse
+    jmp Verificar_clave_pausa
+    RenderAndmsg_continuar:
+        call Renderizar_mapa
+        jmp Lopp_juego
+    Limpiar_e_irse:
+        call Iniciar_video
+        jmp menu_principal
 
-; tmp_char : caracter a comparar
-SkipSpace:
-    CompareSpace:
-        cmp tmp_char, 0a
-        je DoSkip
-        cmp tmp_char,' '
-        jne FinishSkipSpace
-    DoSkip:
+;; char_temporal : caracter a comparar
+Saltar_espacio:
+    Comparar_espacio:
+        cmp char_temporal, 0a
+        je Omitir
+        cmp char_temporal,' '
+        jne FinishSaltar_espacio
+    Omitir:
         mov AH,3Fh
         mov CX,01h
-        mov DX,offset tmp_char
+        mov DX,offset char_temporal
         int 21h
 
-        jc FinishedReading  ; carry flag si hay error, no parece funcionar como yo esperaba xd
-        cmp AX,0000h      ; si no lee nada
-        je FinishedReading
+        jc Finalizar_lectura                                        ; carry flag si hay error, no parece funcionar como yo esperaba xd
+        cmp AX,0000h                                                ; si no lee nada
+        je Finalizar_lectura
 
-        jmp CompareSpace
-    FinishSkipSpace:
+        jmp Comparar_espacio
+    FinishSaltar_espacio:
         ret
 
-; BX : handle del archivo
-; -> tmp_x : X tmp_y : Y
-; Leer coordenadas X,Y del archivo
-ReadXY:
-    _ClearBuffer tmp_char,0a
+;; BX : handle del archivo
+;; -> x_temportal : X y_temporal : Y
+;; Leer coordenadas X,Y del archivo
+LeerXY:
+    LimpiarBuffer char_temporal,0a
     mov AH,3Fh
     mov CX,01h 
-    mov DX, offset tmp_char
+    mov DX, offset char_temporal
     int 21h
     
-    call SkipSpace
+    call Saltar_espacio
 
     mov AH,3Fh
     mov CX,01h 
-    mov DX, offset tmp_char
-    inc DX  ; el último caracter es un número
+    mov DX, offset char_temporal
+    inc DX                                                          ; el último caracter es un número
     int 21h
     
-    _AtoiBuffer tmp_char,tmp_x
+    BufferAtoi char_temporal,x_temportal
 
 
-    _ClearBuffer tmp_char,0a
+    LimpiarBuffer char_temporal,0a
     mov AH,3Fh
     mov CX,01h 
-    mov DX, offset tmp_char
+    mov DX, offset char_temporal
     int 21h
     
-    call SkipSpace
-    ; saltar la coma
+    call Saltar_espacio
+                                                                    ; saltar la coma
     mov AH,42h
     mov AL,01h
     mov DX,0001h
     mov CX,0000h 
     int 21h
 
-    _ClearBuffer tmp_char,0a
+    LimpiarBuffer char_temporal,0a
     mov AH,3Fh
     mov CX,01h 
-    mov DX, offset tmp_char
+    mov DX, offset char_temporal
     int 21h
 
-    call SkipSpace
+    call Saltar_espacio
 
     mov AH,3Fh
     mov CX,01h 
-    mov DX, offset tmp_char
-    inc DX  ; el último caracter es un número
+    mov DX, offset char_temporal
+inc DX                                                              ; el último caracter es un número
     int 21h
-    _AtoiBuffer tmp_char,tmp_y
-    inc tmp_y
-    _ClearBuffer tmp_char,0a
+    BufferAtoi char_temporal,y_temporal
+    inc y_temporal
+    LimpiarBuffer char_temporal,0a
     ret
 
-; SI: información a adjuntar
-; DI: buffer al que se adjunta
-; Agrega la información de SI en desde el primer 255 que encuentre
-AppendToArray:
+;; SI: información a adjuntar
+;; DI: buffer al que se adjunta
+;; Agrega la información de SI en desde el primer 255 que encuentre
+Agregar_al_arreglo:
     push DI 
     push SI
 
-    mov DI,SI   ; lodsb usa SI para cargar el caracter...
-    mov AH,00h  ;contador de posiciones
-    FindZero:   ; encontrar la posición del 255
+    mov DI,SI                                                       ; lodsb usa SI para cargar el caracter...
+    mov AH,00h                                                      ;contador de posiciones
+    Buscar_cero:                                                    ; encontrar la posición del 255
         lodsb
-        cmp AL,0FFh      ;  comparar si el caracter cargado en AL es FF (255)
-        je FoundZero
-        inc AH          ; incrementa condator
-        jmp FindZero
-    FoundZero:
+    cmp AL,0FFh                                                     ;  comparar si el caracter cargado en AL es FF (255)
+        je Encontrar_cero
+        inc AH                                                      ; incrementa condator
+        jmp Buscar_cero
+    Encontrar_cero:
         pop DI
         pop SI
-        mov AL,AH   ; mover parta alta a parte baja 
-        mov AH,00h  ; limpiar parte alta
+        mov AL,AH                                                   ; mover parta alta a parte baja 
+        mov AH,00h                                                  ; limpiar parte alta
 
-        add DI,AX   ; 00NNh
-        movsb       ; no se usa rep porque los datos que se agregan son de un byte, es innecesario
+    add DI,AX                                                       ; 00NNh
+    movsb                                                           ; no se usa rep porque los datos que se agregan son de un byte, es innecesario
         ret
 
 
 ; SI : cadena de texto a imprimir
 ; BL : color del texto
 ; Imprime la cadena de texto en la posición del cursor
-PrintStr:
-    getChar: 
-        lodsb       ; carga un caracter en AL
+Imprimir_Str:
+    Tomar_char: 
+    lodsb                                                           ; carga un caracter en AL
         cmp AL,0    
-        je finishedPrint ; si llega a un caracter NUL, termina
+        je Terminar_impresion                                       ; si llega a un caracter NUL, termina
         
-        mov AH,0Eh  ; imprime el caracter en AL en la posición del cursor
-        mov BH,00h  ; página 0
+        mov AH,0Eh                                                  ; imprime el caracter en AL en la posición del cursor
+        mov BH,00h                                                  ; página 0
         int 10h
 
-        jmp getChar
-    finishedPrint:
+        jmp Tomar_char
+    Terminar_impresion:
         ret
 
 ; cadena de texto a número
@@ -1293,7 +1292,7 @@ atoi:
     noascii:
         ret 
     of:
-        pop AX      ; NO hacer pop a esto hace que el programa se haga popó xd
+pop AX                                                                      ; NO hacer pop a esto hace que el programa se haga popó xd
         mov AH,01h
         ret
 
@@ -1332,104 +1331,104 @@ itoa:
         mov [BX],AX
         ret
 
-; Modo de vídeo 13h 320x200
-InitVideo:
+;; Modo de vídeo 13h 320x200
+Iniciar_video:
     mov AH, 00h
     mov AL, 13h
     int 10h
     ret
 
-; Regresar al modo de texto 03h
-RestoreVideo:
+;; Regresar al modo de texto 03h
+Restaurar_video:
     mov AH,00h
     mov AL,03h
     int 10h
     ret
 
 ; limpia todaa las posiciones de cajas, objetivos, paredes y del jugador
-ClearLevelAssets:
-    _ClearGameBuffer box_xpos,1Eh
-    _ClearGameBuffer box_ypos,1Eh
-    _ClearGameBuffer obj_xpos,1Eh
-    _ClearGameBuffer obj_ypos,1Eh
-    _ClearGameBuffer wal_xpos,0FFh
-    _ClearGameBuffer wal_ypos,0FFh
-    _ClearGameBuffer flo_xpos,0FFh
-    _ClearGameBuffer flo_ypos,0FFh
-    mov ply_xpos,00h
-    mov ply_ypos,00h
-    mov n_obj,00h
-    mov n_box,00h
-    mov n_wal,00h
-    mov n_flo,00h
-    mov secs,00h
-    mov mins,00h
-    mov hrs,00h
+Limpiar_assets_nivel:
+    LimpiarBufferJuego posx_caja,1Eh
+    LimpiarBufferJuego posy_caja,1Eh
+    LimpiarBufferJuego posx_obj,1Eh
+    LimpiarBufferJuego posy_obj,1Eh
+    LimpiarBufferJuego posx_pared,0FFh
+    LimpiarBufferJuego posy_pared,0FFh
+    LimpiarBufferJuego posx_suelo,0FFh
+    LimpiarBufferJuego posy_suelo,0FFh
+    mov posx_jugador,00h
+    mov posy_jugador,00h
+    mov cont_obj,00h
+    mov cont_cajas,00h
+    mov cont_pared,00h
+    mov cont_suelo,00h
+    mov segundos,00h
+    mov minutos,00h
+    mov horas,00h
     mov timer,00h
     mov curr_scr,0000h
     ret
 
-GetTime:
+Tomar_tiempo:
     mov AH,2Ch
     int 21h
     cmp DH,timer
-    jne UpdateTimer
+    jne Actualizar_timer
     ret
-    UpdateTimer:
+    Actualizar_timer:
         mov timer,DH
-        inc secs
-        cmp secs,3Ch ; comparar con 60
-        jge UpdateMinutes
-        jmp PrintNewHour
-    UpdateMinutes:
-        mov secs,00h
-        inc mins
-        cmp mins,3Ch
-        jge UpdateHrs
-        jmp PrintNewHour
-    UpdateHrs:
-        mov mins,00h
-        inc hrs     ; ya mucho engase si esto se pasa de 24 xd
-    PrintNewHour:
-        mov AL,secs
+        inc segundos
+        cmp segundos,3Ch ; comparar con 60
+        jge Actualizar_minutos
+        jmp Imprimir_nueva_hora
+    Actualizar_minutos:
+        mov segundos,00h
+        inc minutos
+        cmp minutos,3Ch
+        jge Actualizar_horas
+        jmp Imprimir_nueva_hora
+    Actualizar_horas:
+        mov minutos,00h
+        inc horas     ; ya mucho engase si esto se pasa de 24 xd
+    Imprimir_nueva_hora:
+        mov AL,segundos
         cbw
-        mov secs2b,AX
-        mov AL,mins
+        mov segundos2b,AX
+        mov AL,minutos
         cbw
-        mov mins2b,AX
-        mov AL,hrs
+        mov minutos2b,AX
+        mov AL,horas
         cbw
-        mov hrs2b,AX
-        _PrintTextAt 24h,BOTTOM_LINE,colon,C_WHITE
+        mov horas2b,AX
+        ImprimirTextoEspecifico 24h,LINEA_BOTON,puntos,COLOR_BLANCO
 
-        _itoaBuffer secs2b,g_buffer2
-        _PrintTextAt 25h,BOTTOM_LINE,g_buffer2,C_WHITE
+        BufferItoa segundos2b,buffer_g2
+        ImprimirTextoEspecifico 25h,LINEA_BOTON,buffer_g2,COLOR_BLANCO
 
-        _PrintTextAt 21h,BOTTOM_LINE,colon,C_WHITE
+        ImprimirTextoEspecifico 21h,LINEA_BOTON,puntos,COLOR_BLANCO
 
-        _itoaBuffer mins2b,g_buffer2
-        _PrintTextAt 22h,BOTTOM_LINE,g_buffer2,C_WHITE
+        BufferItoa minutos2b,buffer_g2
+        ImprimirTextoEspecifico 22h,LINEA_BOTON,buffer_g2,COLOR_BLANCO
         
 
-        _itoaBuffer hrs2b,g_buffer2
-        _PrintTextAt 1Fh,BOTTOM_LINE,g_buffer2,C_WHITE
+        BufferItoa horas2b,buffer_g2
+        ImprimirTextoEspecifico 1Fh,LINEA_BOTON,buffer_g2,COLOR_BLANCO
         ret
 
-; numero AX; padding con un 0 si el numero es menor a 10
-zeroPadding:
+;; numero AX; padding con un 0 si el numero es menor a 10
+padCeroding:
     cmp AX,0Ah
-    jb addZeroPadding
-    _clearBuffer g_buffer,20h
-    lea DI,g_buffer 
+    jb addpadCeroding
+    LimpiarBuffer buffer_g,20h
+    lea DI,buffer_g 
     ret
-addZeroPadding: 
-    _clearBuffer g_buffer,20h
-    lea DI,g_buffer 
-    _addtoTMPbuffer zeropad,01h,0 
+addpadCeroding: 
+    LimpiarBuffer buffer_g,20h
+    lea DI,buffer_g 
+    AnadirBufferTMP padCero,01h,0 
     ret
 
-TextModePrintstr:
-    TMgetchar:
+TextModeImprimir_Str:
+    TMTomar_char:
         lodsb
         cmp AL,0a
         je nline 
@@ -1437,7 +1436,7 @@ TextModePrintstr:
         je TMfinished
         mov AH, 0Eh
         int 10h
-        jmp TMgetchar
+        jmp TMTomar_char
     
     nline:              ;convertir un \n en \r\n
         mov AL, 0d
@@ -1446,18 +1445,18 @@ TextModePrintstr:
         mov AL, 0a
         mov AH, 0Eh
         int 10h
-        jmp TMgetchar
+        jmp TMTomar_char
 
     TMfinished:
         ret
 
 Final:
-;    call RestoreVideo
+;    call Restaurar_video
     .EXIT
 
 ;;;;;;; Sprites 8x8 ;;;;;;;;;
 
-wall:    
+pared:    
     db 49, 48, 32, 1c, 1c, 1c, 49, 49
     db 48, 32, 1c, 49, 49, 49, 48, 32
     db 48, 78, 49, 48, 48, 32, 31, 31
@@ -1467,17 +1466,17 @@ wall:
     db 1c, 78, 78, 49, 49, 48, 48, 32
     db 49, 1c, 49, 48, 32, 32, 31, 1c
 
-box:
-    db 42, 42, 42, 42,  42,  42,  42,  42
-    db 42, 42, 0b8, 0b8, 0b8, 0b8, 42, 42
-    db 42, 0b8, 8a, 8a, 8a,  8a,  0b8, 42
-    db 42, 0b8, 8a, 8a, 8a,  8a,  0b8, 42
-    db 42, 0b8, 8a, 8a, 8a,  8a,  0b8, 42
-    db 42, 0b8, 8a, 8a, 8a,  8a,  0b8, 42
-    db 42, 42, 0b8, 0b8, 0b8, 0b8, 42, 42
-    db 42,  42,  42,  42,  42, 42, 42, 42
+caja:
+    db 42, 42, 42, 00, 42, 42, 42, 42
+    db 42, 42, 00, 35, 00, 42, 42, 42
+    db 42, 42, 00, 35, 00, 42, 42, 42
+    db 42, 00, 35, 21, 21, 00, 42, 42
+    db 42, 00, 0f, 35, 21, 00, 42, 42
+    db 42, 00, 0f, 35, 21, 00, 42, 42
+    db 42, 42, 00, 0f, 00, 42, 42, 42
+    db 42, 42, 42, 00, 42, 42, 42, 42
 
-floor:
+suelo:
     db 42, 42, 42, 42, 42, 42, 42, 42
     db 42, 42, 42, 42, 42, 42, 42, 42
     db 42, 42, 42, 42, 42, 42, 42, 42
@@ -1487,17 +1486,17 @@ floor:
     db 42, 42, 42, 42, 42, 42, 42, 42
     db 42, 42, 42, 42, 42, 42, 42, 42
 
-target:
-    db 42,42,42,42,42,42,42,42
-    db 42,28,42,42,42,42,28,42
-    db 42,42,28,42,42,28,42,42
-    db 42,42,42,28,28,42,42,42
-    db 42,42,42,28,28,42,42,42
-    db 42,42,28,42,42,28,42,42
-    db 42,28,42,42,42,42,28,42
-    db 42,42,42,42,42,42,42,42
+objetivo:
+    db 42,42,00,00,00,00,42,42
+    db 42,00,1b,1b,1b,50,00,42
+    db 00,1b,17,17,1b,1b,50,00
+    db 00,00,00,17,1b,00,00,00
+    db 00,0f,1a,00,00,1a,1a,00
+    db 42,00,1a,0f,1a,1c,00,42
+    db 42,00,1a,0f,1a,1a,00,42
+    db 42,42,00,00,00,00,42,42
 
-player:
+jugador:
     db 42, 42, 04, 04, 04, 42, 42, 42 
     db 42, 04, 0E, 0E, 0E, 04, 42, 42 
     db 42, 42, 04, 04, 04, 42, 42, 42 
